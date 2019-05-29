@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Mar  6 10:25:14 2019
+Created on Wed Mar  6 11:23:06 2019
 
 @author: richardlee
 """
+
 
 import pandas as pd
 import numpy as np
@@ -19,50 +20,54 @@ def split_data(data,train_ratio,col):
     x_train , y_train = train[:,0:col],train[:,col]
     return train,test,x_train,y_train,x_test,y_test
 
-
-
 def prior(clsarray,classnum):
     pri = [sum(clsarray==i+1)/len(clsarray) for i in range(2)]
     return pri
 
-
-
-def bino_likelihood(x_train,y_train,dim):
-    p=[0]*dim
+def mean(x_train,y_train,dim):
+    mu = [0]*dim
     for i in range(dim):
         class_data=x_train[y_train==i+1]
-        p[i] = sum(class_data[:,0])/len(class_data)
-    return p     
-   
+        mu[i] = np.mean(class_data)
+    return mu
 
-def disc(x,prior,mle,dim):
-    # p = p(x|c)*p(c)
-    p = [mle[i]*prior[i] for i in range(dim)]
-    # g = p^x *(1-P)^(1-x)
-    g = [p[i] if x==1 else 1-p[i] for i in range(dim)]
-    return np.argmax(g)+1
+def var(x_train,y_train,dim):
+    var = [0]*dim
+    for i in range(dim):
+        class_data=x_train[y_train==i+1]
+        var[i] = np.var(class_data)
+    return var
 
+def n_pdf(x,mu,var):
+    npdf = -(x-mu)**2/var/2
+    return npdf
+
+def disc(x,prior,dim):
+    # g = -log(var)/2 + normal_density +log(prior)
+    g = [-np.log(var[i])/2 +n_pdf(x,mu[i],var[i])+np.log(prior[i]) for i in range(dim)]
+    return np.argmax(g)+1  
 def pred():
     y_pred =np.array([0]*len(x_test))
-    
     for i in range(len(x_test)):
-        y_pred[i] = disc(x_test[i],prior,mle,dim)
+        y_pred[i] = disc(x_test[i],prior,dim)
     return y_pred
 
 def confusion_matrix(y_pred,y_test):
+    y_test = y_test.astype(int)
     pred= pd.Series(y_pred,name="Predtict")
     act = pd.Series(y_test,name="Actual")
     cf = pd.crosstab(act,pred)
     return cf
 
-data1 = np.array(pd.read_csv("input_1.csv"))
-train,test,x_train , y_train ,x_test ,y_test= split_data(data1,0.8,1)
+data2 = np.array(pd.read_csv("input_2.csv"))
+train,test,x_train , y_train ,x_test ,y_test= split_data(data2,0.8,1)
 #no.of class  
-dim = 2 
-#prior   
+dim = 2
+#prior
 prior = prior(y_train,dim)
 #mle
-mle = bino_likelihood(x_train,y_train,dim) 
+mu = mean(x_train,y_train,dim)
+var= var(x_train,y_train,dim)
 
 y_pred=pred()
 cf = confusion_matrix(y_pred,y_test)
@@ -89,6 +94,3 @@ def print_summary():
     print("average f1 score : ",ave_f1)
 
 print_summary()
-
-
-    
